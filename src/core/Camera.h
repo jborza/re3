@@ -92,6 +92,7 @@ public:
 		MODE_FIGHT_CAM_RUNABOUT,
 		MODE_EDITOR,
 		MODE_HELICANNON_1STPERSON, // vice city leftover
+		MODE_NEW_1STPERSON
 	};
 
 	bool    bBelowMinDist; //used for follow ped mode
@@ -225,6 +226,9 @@ public:
 	void Process_TopDownPed(const CVector &CameraTarget, float TargetOrientation, float, float);
 	void Process_Rocket(const CVector &CameraTarget, float, float, float);
 	void Process_M16_1stPerson(const CVector &CameraTarget, float, float, float);
+#ifdef FIRST_PERSON
+	void Process_1stPerson_New(const CVector &CameraTarget, float, float, float);
+#endif
 	void Process_1stPerson(const CVector &CameraTarget, float, float, float);
 	void Process_1rstPersonPedOnPC(const CVector &CameraTarget, float TargetOrientation, float, float);
 	void Process_Sniper(const CVector &CameraTarget, float, float, float);

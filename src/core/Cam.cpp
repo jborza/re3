@@ -2549,6 +2549,127 @@ CCam::Process_Rocket(const CVector &CameraTarget, float, float, float)
 	((CPed*)TheCamera.pTargetEntity)->m_fRotationDest = Rotation;
 }
 
+#ifdef FIRST_PERSON
+void
+CCam::Process_1stPerson_New(const CVector &CameraTarget, float, float, float)
+{
+	if(!CamTargetEntity->IsPed()) return;
+
+	static bool FailedTestTwelveFramesAgo = false;
+	RwV3d HeadPos;
+	CVector TargetCoors;
+
+	FOV = DefaultFOV;
+	TargetCoors = CameraTarget;
+
+	if(ResetStatics) {
+		Beta = ((CPed *)CamTargetEntity)->m_fRotationCur + HALFPI;
+		Alpha = 0.0f;
+		m_fInitialPlayerOrientation = ((CPed *)CamTargetEntity)->m_fRotationCur + HALFPI;
+		FailedTestTwelveFramesAgo = false;
+		// static DPadVertical unused
+		// static DPadHorizontal unused
+		m_bCollisionChecksOn = true;
+		ResetStatics = false;
+	}
+
+#if GTA_VERSION < GTA3_PC_11
+	((CPed *)CamTargetEntity)->m_pedIK.GetComponentPosition(HeadPos, PED_HEAD);
+	Source = HeadPos;
+	Source.z += 0.1f;
+	Source.x -= 0.19f * Cos(m_fInitialPlayerOrientation);
+	Source.y -= 0.19f * Sin(m_fInitialPlayerOrientation);
+#endif
+
+	// Look around
+	bool UseMouse = false;
+	float MouseX = CPad::GetPad(0)->GetMouseX();
+	float MouseY = CPad::GetPad(0)->GetMouseY();
+	float LookLeftRight, LookUpDown;
+	if(MouseX != 0.0f || MouseY != 0.0f) {
+		UseMouse = true;
+		LookLeftRight = -3.0f * MouseX;
+		LookUpDown = 4.0f * MouseY;
+	} else {
+#ifdef FIRST_PERSON
+		// FIX don't do left/right movement by keys / pad
+		LookLeftRight = 0;
+		LookUpDown = 0;
+#else
+		LookLeftRight = -CPad::GetPad(0)->SniperModeLookLeftRight();
+		LookUpDown = CPad::GetPad(0)->SniperModeLookUpDown();
+#endif
+	}
+	if(UseMouse) {
+		Beta += TheCamera.m_fMouseAccelHorzntl * LookLeftRight * FOV / 80.0f;
+		Alpha += TheCamera.m_fMouseAccelVertical * LookUpDown * FOV / 80.0f;
+	} else {
+		float xdir = LookLeftRight < 0.0f ? -1.0f : 1.0f;
+		float ydir = LookUpDown < 0.0f ? -1.0f : 1.0f;
+		Beta += SQR(LookLeftRight / 100.0f) * xdir * 0.8f / 14.0f * FOV / 80.0f * CTimer::GetTimeStep();
+		Alpha += SQR(LookUpDown / 150.0f) * ydir * 1.0f / 14.0f * FOV / 80.0f * CTimer::GetTimeStep();
+	}
+	while(Beta >= PI) Beta -= 2 * PI;
+	while(Beta < -PI) Beta += 2 * PI;
+	if(Alpha > DEGTORAD(60.0f))
+		Alpha = DEGTORAD(60.0f);
+	else if(Alpha < -DEGTORAD(89.5f))
+		Alpha = -DEGTORAD(89.5f);
+
+#if GTA_VERSION >= GTA3_PC_11
+	HeadPos.x = 0.0f;
+	HeadPos.y = 0.0f;
+	HeadPos.z = 0.0f;
+	((CPed *)CamTargetEntity)->m_pedIK.GetComponentPosition(HeadPos, PED_HEAD);
+	Source = HeadPos;
+	Source.z += 0.1f;
+	Source.x -= 0.19f * Cos(m_fInitialPlayerOrientation);
+	Source.y -= 0.19f * Sin(m_fInitialPlayerOrientation);
+#endif
+
+	TargetCoors.x = 3.0f * Cos(Alpha) * Cos(Beta) + Source.x;
+	TargetCoors.y = 3.0f * Cos(Alpha) * Sin(Beta) + Source.y;
+	TargetCoors.z = 3.0f * Sin(Alpha) + Source.z;
+	Front = TargetCoors - Source;
+	Front.Normalise();
+	Source += Front * 0.4f;
+
+	if(m_bCollisionChecksOn) {
+		if(!CWorld::GetIsLineOfSightClear(TargetCoors, Source, true, true, false, true, false, true, true)) {
+			RwCameraSetNearClipPlane(Scene.camera, 0.4f);
+			FailedTestTwelveFramesAgo = true;
+		} else {
+			CVector TestPoint;
+			TestPoint.x = 3.0f * Cos(Alpha - DEGTORAD(20.0f)) * Cos(Beta + DEGTORAD(35.0f)) + Source.x;
+			TestPoint.y = 3.0f * Cos(Alpha - DEGTORAD(20.0f)) * Sin(Beta + DEGTORAD(35.0f)) + Source.y;
+			TestPoint.z = 3.0f * Sin(Alpha - DEGTORAD(20.0f)) + Source.z;
+			if(!CWorld::GetIsLineOfSightClear(TestPoint, Source, true, true, false, true, false, true, true)) {
+				RwCameraSetNearClipPlane(Scene.camera, 0.4f);
+				FailedTestTwelveFramesAgo = true;
+			} else {
+				TestPoint.x = 3.0f * Cos(Alpha - DEGTORAD(20.0f)) * Cos(Beta - DEGTORAD(35.0f)) + Source.x;
+				TestPoint.y = 3.0f * Cos(Alpha - DEGTORAD(20.0f)) * Sin(Beta - DEGTORAD(35.0f)) + Source.y;
+				TestPoint.z = 3.0f * Sin(Alpha - DEGTORAD(20.0f)) + Source.z;
+				if(!CWorld::GetIsLineOfSightClear(TestPoint, Source, true, true, false, true, false, true, true)) {
+					RwCameraSetNearClipPlane(Scene.camera, 0.4f);
+					FailedTestTwelveFramesAgo = true;
+				} else
+					FailedTestTwelveFramesAgo = false;
+			}
+		}
+	}
+
+	if(FailedTestTwelveFramesAgo) RwCameraSetNearClipPlane(Scene.camera, 0.4f);
+	Source -= Front * 0.4f;
+
+	// rotate towards the camera
+	GetVectorsReadyForRW();
+	float Rotation = CGeneral::GetATanOfXY(Front.x, Front.y) - HALFPI;
+	((CPed *)TheCamera.pTargetEntity)->m_fRotationCur = Rotation;
+	((CPed *)TheCamera.pTargetEntity)->m_fRotationDest = Rotation;
+}
+#endif
+
 // Identical to Rocket
 void
 CCam::Process_M16_1stPerson(const CVector &CameraTarget, float, float, float)
@@ -2592,8 +2713,14 @@ CCam::Process_M16_1stPerson(const CVector &CameraTarget, float, float, float)
 		LookLeftRight = -3.0f*MouseX;
 		LookUpDown = 4.0f*MouseY;
 	}else{
+#ifdef FIRST_PERSON
+		// FIX don't do left/right movement by keys / pad
+		LookLeftRight = 0;
+		LookUpDown = 0;
+#else
 		LookLeftRight = -CPad::GetPad(0)->SniperModeLookLeftRight();
 		LookUpDown = CPad::GetPad(0)->SniperModeLookUpDown();
+#endif
 	}
 	if(UseMouse){
 		Beta += TheCamera.m_fMouseAccelHorzntl * LookLeftRight * FOV/80.0f;
@@ -2656,11 +2783,124 @@ CCam::Process_M16_1stPerson(const CVector &CameraTarget, float, float, float)
 		RwCameraSetNearClipPlane(Scene.camera, 0.4f);
 	Source -= Front*0.4f;
 
+	//rotate towards the camera
 	GetVectorsReadyForRW();
 	float Rotation = CGeneral::GetATanOfXY(Front.x, Front.y) - HALFPI;
 	((CPed*)TheCamera.pTargetEntity)->m_fRotationCur = Rotation;
 	((CPed*)TheCamera.pTargetEntity)->m_fRotationDest = Rotation;
 }
+
+//void
+//CCam::Process_1stPersonFixed(const CVector &CameraTarget, float TargetOrientation, float, float)
+//{
+//	if(!CamTargetEntity->IsPed()) return;
+//
+//	static bool FailedTestTwelveFramesAgo = false;
+//	RwV3d HeadPos;
+//	CVector TargetCoors;
+//
+//	FOV = DefaultFOV;
+//	TargetCoors = CameraTarget;
+//
+//	if(ResetStatics) {
+//		Beta = ((CPed *)CamTargetEntity)->m_fRotationCur + HALFPI;
+//		Alpha = 0.0f;
+//		m_fInitialPlayerOrientation = ((CPed *)CamTargetEntity)->m_fRotationCur + HALFPI;
+//		FailedTestTwelveFramesAgo = false;
+//		// static DPadVertical unused
+//		// static DPadHorizontal unused
+//		m_bCollisionChecksOn = true;
+//		ResetStatics = false;
+//	}
+//
+//#if GTA_VERSION < GTA3_PC_11
+//	((CPed *)CamTargetEntity)->m_pedIK.GetComponentPosition(HeadPos, PED_HEAD);
+//	Source = HeadPos;
+//	Source.z += 0.1f;
+//	Source.x -= 0.19f * Cos(m_fInitialPlayerOrientation);
+//	Source.y -= 0.19f * Sin(m_fInitialPlayerOrientation);
+//#endif
+//
+//	// Look around
+//	bool UseMouse = false;
+//	float MouseX = CPad::GetPad(0)->GetMouseX();
+//	float MouseY = CPad::GetPad(0)->GetMouseY();
+//	float LookLeftRight, LookUpDown;
+//	if(MouseX != 0.0f || MouseY != 0.0f) {
+//		UseMouse = true;
+//		LookLeftRight = -3.0f * MouseX;
+//		LookUpDown = 4.0f * MouseY;
+//	} else {
+//		// LookLeftRight = -CPad::GetPad(0)->SniperModeLookLeftRight();
+//		// LookUpDown = CPad::GetPad(0)->SniperModeLookUpDown();
+//	}
+//	if(UseMouse) {
+//		Beta += TheCamera.m_fMouseAccelHorzntl * LookLeftRight * FOV / 80.0f;
+//		Alpha += TheCamera.m_fMouseAccelVertical * LookUpDown * FOV / 80.0f;
+//	} else {
+//		float xdir = LookLeftRight < 0.0f ? -1.0f : 1.0f;
+//		float ydir = LookUpDown < 0.0f ? -1.0f : 1.0f;
+//		Beta += SQR(LookLeftRight / 100.0f) * xdir * 0.8f / 14.0f * FOV / 80.0f * CTimer::GetTimeStep();
+//		Alpha += SQR(LookUpDown / 150.0f) * ydir * 1.0f / 14.0f * FOV / 80.0f * CTimer::GetTimeStep();
+//	}
+//	while(Beta >= PI) Beta -= 2 * PI;
+//	while(Beta < -PI) Beta += 2 * PI;
+//	if(Alpha > DEGTORAD(60.0f))
+//		Alpha = DEGTORAD(60.0f);
+//	else if(Alpha < -DEGTORAD(89.5f))
+//		Alpha = -DEGTORAD(89.5f);
+//
+//#if GTA_VERSION >= GTA3_PC_11
+//	HeadPos.x = 0.0f;
+//	HeadPos.y = 0.0f;
+//	HeadPos.z = 0.0f;
+//	((CPed *)CamTargetEntity)->m_pedIK.GetComponentPosition(HeadPos, PED_HEAD);
+//	Source = HeadPos;
+//	Source.z += 0.1f;
+//	Source.x -= 0.19f * Cos(m_fInitialPlayerOrientation);
+//	Source.y -= 0.19f * Sin(m_fInitialPlayerOrientation);
+//#endif
+//
+//	TargetCoors.x = 3.0f * Cos(Alpha) * Cos(Beta) + Source.x;
+//	TargetCoors.y = 3.0f * Cos(Alpha) * Sin(Beta) + Source.y;
+//	TargetCoors.z = 3.0f * Sin(Alpha) + Source.z;
+//	Front = TargetCoors - Source;
+//	Front.Normalise();
+//	Source += Front * 0.4f;
+//
+//	if(m_bCollisionChecksOn) {
+//		if(!CWorld::GetIsLineOfSightClear(TargetCoors, Source, true, true, false, true, false, true, true)) {
+//			RwCameraSetNearClipPlane(Scene.camera, 0.4f);
+//			FailedTestTwelveFramesAgo = true;
+//		} else {
+//			CVector TestPoint;
+//			TestPoint.x = 3.0f * Cos(Alpha - DEGTORAD(20.0f)) * Cos(Beta + DEGTORAD(35.0f)) + Source.x;
+//			TestPoint.y = 3.0f * Cos(Alpha - DEGTORAD(20.0f)) * Sin(Beta + DEGTORAD(35.0f)) + Source.y;
+//			TestPoint.z = 3.0f * Sin(Alpha - DEGTORAD(20.0f)) + Source.z;
+//			if(!CWorld::GetIsLineOfSightClear(TestPoint, Source, true, true, false, true, false, true, true)) {
+//				RwCameraSetNearClipPlane(Scene.camera, 0.4f);
+//				FailedTestTwelveFramesAgo = true;
+//			} else {
+//				TestPoint.x = 3.0f * Cos(Alpha - DEGTORAD(20.0f)) * Cos(Beta - DEGTORAD(35.0f)) + Source.x;
+//				TestPoint.y = 3.0f * Cos(Alpha - DEGTORAD(20.0f)) * Sin(Beta - DEGTORAD(35.0f)) + Source.y;
+//				TestPoint.z = 3.0f * Sin(Alpha - DEGTORAD(20.0f)) + Source.z;
+//				if(!CWorld::GetIsLineOfSightClear(TestPoint, Source, true, true, false, true, false, true, true)) {
+//					RwCameraSetNearClipPlane(Scene.camera, 0.4f);
+//					FailedTestTwelveFramesAgo = true;
+//				} else
+//					FailedTestTwelveFramesAgo = false;
+//			}
+//		}
+//	}
+//
+//	if(FailedTestTwelveFramesAgo) RwCameraSetNearClipPlane(Scene.camera, 0.4f);
+//	Source -= Front * 0.4f;
+//
+//	GetVectorsReadyForRW();
+//	float Rotation = CGeneral::GetATanOfXY(Front.x, Front.y) - HALFPI;
+//	((CPed *)TheCamera.pTargetEntity)->m_fRotationCur = Rotation;
+//	((CPed *)TheCamera.pTargetEntity)->m_fRotationDest = Rotation;
+//}
 
 void
 CCam::Process_1stPerson(const CVector &CameraTarget, float TargetOrientation, float, float)
@@ -2883,8 +3123,8 @@ CCam::Process_1rstPersonPedOnPC(const CVector&, float TargetOrientation, float, 
 			LookLeftRight = -3.0f*MouseX;
 			LookUpDown = 4.0f*MouseY;
 		}else{
-			LookLeftRight = -CPad::GetPad(0)->LookAroundLeftRight();
-			LookUpDown = CPad::GetPad(0)->LookAroundUpDown();
+			LookLeftRight =0 ;// -CPad::GetPad(0)->LookAroundLeftRight();
+			LookUpDown = 0; //CPad::GetPad(0)->LookAroundUpDown();
 		}
 		if(UseMouse){
 			Beta += TheCamera.m_fMouseAccelHorzntl * LookLeftRight * FOV/80.0f;

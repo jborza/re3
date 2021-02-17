@@ -1028,9 +1028,9 @@ CCamera::CamControl(void)
 			   !m_WideScreenOn && !m_bFailedCullZoneTestPreviously){
 				if(FrontEndMenuManager.m_ControlMethod == CONTROL_STANDARD){
 					if(PedZoomIndicator == CAM_ZOOM_TOPDOWN)
-						PedZoomIndicator = CAM_ZOOM_1;
+						PedZoomIndicator = CAM_ZOOM_1; //pedestrian default cam 1
 					else
-						PedZoomIndicator = CAM_ZOOM_TOPDOWN;
+						PedZoomIndicator = CAM_ZOOM_TOPDOWN; //pedestrian default cam 2
 				}else
 					PedZoomIndicator--;
 			}

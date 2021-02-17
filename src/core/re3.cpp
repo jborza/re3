@@ -1057,8 +1057,12 @@ extern bool gbRenderWorld2;
 		DebugMenuAddVar("Cam", "Cam Mode", &DebugCamMode, nil, 1, 0, CCam::MODE_EDITOR, nil);
 		DebugMenuAddCmd("Cam", "Normal", []() { DebugCamMode = 0; });
 	//	DebugMenuAddCmd("Cam", "Follow Ped With Bind", []() { DebugCamMode = CCam::MODE_FOLLOW_PED_WITH_BIND; });
-	//	DebugMenuAddCmd("Cam", "Reaction", []() { DebugCamMode = CCam::MODE_REACTION; });
-	//	DebugMenuAddCmd("Cam", "Chris", []() { DebugCamMode = CCam::MODE_CHRIS; });
+		//DebugMenuAddCmd("Cam", "Reaction", []() { DebugCamMode = CCam::MODE_REACTION; });
+		//DebugMenuAddCmd("Cam", "Chris", []() { DebugCamMode = CCam::MODE_CHRIS; });
+#ifdef FIRST_PERSON
+		DebugMenuAddCmd("Cam", "M16", []() { DebugCamMode = CCam::MODE_M16_1STPERSON; });
+		DebugMenuAddCmd("Cam", "1ST NEW", []() { DebugCamMode = CCam::MODE_NEW_1STPERSON; });
+#endif
 		DebugMenuAddCmd("Cam", "Reset Statics", ResetCamStatics);
 
 		CTweakVars::AddDBG("Debug");

@@ -16,6 +16,7 @@
 #include "Pools.h"
 #include "Darkel.h"
 #include "CarCtrl.h"
+#include "Debug.h"
 
 #define PAD_MOVE_TO_GAME_WORLD_MOVE 60.0f
 
@@ -575,6 +576,10 @@ CPlayerPed::IsThisPedAttackingPlayer(CPed *suspect)
 void
 CPlayerPed::PlayerControlSniper(CPad *padUsed)
 {
+	CDebug::PrintAt("PlayerControlSniper", 5, 5);
+
+	//sprintf(buf, "m_nPedState: %d padUsed: %d, moveState: %d", m_nPedState, padUsed, m_nMoveState);
+
 	ProcessWeaponSwitch(padUsed);
 	TheCamera.PlayerExhaustion = (1.0f - (m_fCurrentStamina - -150.0f) / 300.0f) * 0.9f + 0.1f;
 
@@ -656,6 +661,7 @@ switchDetectDone:
 void
 CPlayerPed::PlayerControlM16(CPad *padUsed)
 {
+	CDebug::PrintAt("PlayerControlM16", 5, 5);
 	ProcessWeaponSwitch(padUsed);
 	TheCamera.PlayerExhaustion = (1.0f - (m_fCurrentStamina - -150.0f) / 300.0f) * 0.9f + 0.1f;
 
@@ -675,6 +681,7 @@ CPlayerPed::PlayerControlM16(CPad *padUsed)
 void
 CPlayerPed::PlayerControlFighter(CPad *padUsed)
 {
+	CDebug::PrintAt("PlayerControlFighter", 5, 5);
 	float leftRight = padUsed->GetPedWalkLeftRight();
 	float upDown = padUsed->GetPedWalkUpDown();
 	float padMove = CVector2D(leftRight, upDown).Magnitude();
@@ -700,6 +707,7 @@ CPlayerPed::PlayerControlFighter(CPad *padUsed)
 void
 CPlayerPed::PlayerControl1stPersonRunAround(CPad *padUsed)
 {
+	CDebug::PrintAt("PlayerControl1stPersonRunAround", 5, 5);
 	float leftRight = padUsed->GetPedWalkLeftRight();
 	float upDown = padUsed->GetPedWalkUpDown();
 	float padMove = CVector2D(leftRight, upDown).Magnitude();
@@ -1168,6 +1176,9 @@ CPlayerPed::ProcessPlayerWeapon(CPad *padUsed)
 void
 CPlayerPed::PlayerControlZelda(CPad *padUsed)
 {
+	char buf[255];
+	CDebug::PrintAt("PlayerControlZelda", 5, 6);
+
 	bool doSmoothSpray = DoWeaponSmoothSpray();
 	float camOrientation = TheCamera.Orientation;
 	float leftRight = padUsed->GetPedWalkLeftRight();
@@ -1175,12 +1186,17 @@ CPlayerPed::PlayerControlZelda(CPad *padUsed)
 	float padMoveInGameUnit;
 	bool smoothSprayWithoutMove = false;
 
+
 	if (doSmoothSpray && upDown > 0.0f) {
 		padMoveInGameUnit = 0.0f;
 		smoothSprayWithoutMove = true;
 	} else {
 		padMoveInGameUnit = CVector2D(leftRight, upDown).Magnitude() / PAD_MOVE_TO_GAME_WORLD_MOVE;
+
 	}
+
+	sprintf(buf, "LR:%f UD:%f padMoveInGameUnit: %f", leftRight, upDown, padMoveInGameUnit);
+	CDebug::PrintAt(buf, 5, 7);
 
 	if (padMoveInGameUnit > 0.0f || smoothSprayWithoutMove) {
 		float padHeading = CGeneral::GetRadianAngleBetweenPoints(0.0f, 0.0f, -leftRight, upDown);
@@ -1319,6 +1335,12 @@ CPlayerPed::ProcessControl(void)
 			DMAudio.PlayFrontEndSound(SOUND_WEAPON_ROCKET_SHOT_NO_ZOOM, 0);
 		}
 	}
+
+	#ifdef FIRST_PERSON
+	char buf[256];
+	sprintf(buf, "m_nPedState: %d padUsed: %s, moveState: %d", m_nPedState, padUsed?"1":"0", m_nMoveState);
+	CDebug::PrintAt(buf, 4, 5);
+	#endif
 
 	switch (m_nPedState) {
 		case PED_NONE:
@@ -1465,6 +1487,36 @@ CPlayerPed::ProcessControl(void)
 		ClearLookFlag();
 		SetLookTimer(250);
 	}
+
+	#ifdef FIRST_PERSON
+	//rework the crude 0.2 version
+	float leftRight = padUsed->GetPedWalkLeftRight();
+	float upDown = padUsed->GetPedWalkUpDown();
+	float padMoveInGameUnit = CVector2D(leftRight, upDown).Magnitude() / PAD_MOVE_TO_GAME_WORLD_MOVE;
+	float padHeading = CGeneral::GetRadianAngleBetweenPoints(0.0f, 0.0f, -leftRight, upDown);
+	float camOrientation = TheCamera.Orientation;
+	float neededTurn = CGeneral::LimitRadianAngle(padHeading - camOrientation + (PI / 2));
+	// vector back from angle
+	CVector2D velocityChange = CVector2D(Cos(neededTurn), Sin(neededTurn));
+	//float neededY = Sin(neededTurn);
+	//float neededX = Cos(neededTurn);
+	m_vecMoveSpeed.x = velocityChange.x * 0.1f * padMoveInGameUnit; //-m_vecMoveSpeed.x;
+	m_vecMoveSpeed.y = velocityChange.y * 0.1f * padMoveInGameUnit;
+
+	float changeX = 0.07f * CTimer::GetTimeStep();
+
+	sprintf(buf, "m_vecMoveSpeed.Magnitude: %1.3f Heading:%f, X:%1.3f Y:%1.3f", m_vecMoveSpeed.Magnitude2D(), neededTurn, m_vecMoveSpeed.x,
+	        m_vecMoveSpeed.y);
+	//sprintf(buf, "m_vecMoveSpeed.Magnitude2D: %1.3f Heading:%f, X:%1.3f Y:%1.3f Z:%1.3f", m_vecMoveSpeed.Magnitude2D(), m_vecMoveSpeed.x, m_vecMoveSpeed.y, m_vecMoveSpeed.z, m_vecMoveSpeed.Heading());
+	CDebug::PrintAt(buf, 6, 30);
+	sprintf(buf, "velocityChange X: %1.3f Y: %1.3f", velocityChange.x, velocityChange.y);
+	CDebug::PrintAt(buf, 6, 31);
+	float timestepAdjusted = 0.07f * CTimer::GetTimeStep();
+	sprintf(buf, "timestep: %1.3f change: %1.3f xadj: %1.3f, yadj: %1.3f", CTimer::GetTimeStep(), timestepAdjusted, velocityChange.x * timestepAdjusted,
+	        velocityChange.y * timestepAdjusted);
+	CDebug::PrintAt(buf, 6, 32);
+	
+	#endif
 
 	if (m_vecMoveSpeed.Magnitude2D() < 0.1f) {
 		if (m_nSpeedTimer) {
