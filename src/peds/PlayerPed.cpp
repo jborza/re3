@@ -576,10 +576,6 @@ CPlayerPed::IsThisPedAttackingPlayer(CPed *suspect)
 void
 CPlayerPed::PlayerControlSniper(CPad *padUsed)
 {
-	CDebug::PrintAt("PlayerControlSniper", 5, 5);
-
-	//sprintf(buf, "m_nPedState: %d padUsed: %d, moveState: %d", m_nPedState, padUsed, m_nMoveState);
-
 	ProcessWeaponSwitch(padUsed);
 	TheCamera.PlayerExhaustion = (1.0f - (m_fCurrentStamina - -150.0f) / 300.0f) * 0.9f + 0.1f;
 
@@ -661,7 +657,6 @@ switchDetectDone:
 void
 CPlayerPed::PlayerControlM16(CPad *padUsed)
 {
-	CDebug::PrintAt("PlayerControlM16", 5, 5);
 	ProcessWeaponSwitch(padUsed);
 	TheCamera.PlayerExhaustion = (1.0f - (m_fCurrentStamina - -150.0f) / 300.0f) * 0.9f + 0.1f;
 
@@ -681,7 +676,6 @@ CPlayerPed::PlayerControlM16(CPad *padUsed)
 void
 CPlayerPed::PlayerControlFighter(CPad *padUsed)
 {
-	CDebug::PrintAt("PlayerControlFighter", 5, 5);
 	float leftRight = padUsed->GetPedWalkLeftRight();
 	float upDown = padUsed->GetPedWalkUpDown();
 	float padMove = CVector2D(leftRight, upDown).Magnitude();
@@ -707,7 +701,6 @@ CPlayerPed::PlayerControlFighter(CPad *padUsed)
 void
 CPlayerPed::PlayerControl1stPersonRunAround(CPad *padUsed)
 {
-	CDebug::PrintAt("PlayerControl1stPersonRunAround", 5, 5);
 	float leftRight = padUsed->GetPedWalkLeftRight();
 	float upDown = padUsed->GetPedWalkUpDown();
 	float padMove = CVector2D(leftRight, upDown).Magnitude();
@@ -1497,11 +1490,11 @@ CPlayerPed::ProcessControl(void)
 	float camOrientation = TheCamera.Orientation;
 	float neededTurn = CGeneral::LimitRadianAngle(padHeading - camOrientation + (PI / 2));
 	// vector back from angle
-	CVector2D velocityChange = CVector2D(Cos(neededTurn), Sin(neededTurn));
+	CVector2D velocityChange = CVector2D(Cos(neededTurn), Sin(neededTurn)) * padMoveInGameUnit;
 	//float neededY = Sin(neededTurn);
 	//float neededX = Cos(neededTurn);
-	m_vecMoveSpeed.x = velocityChange.x * 0.1f * padMoveInGameUnit; //-m_vecMoveSpeed.x;
-	m_vecMoveSpeed.y = velocityChange.y * 0.1f * padMoveInGameUnit;
+	m_vecMoveSpeed.x = velocityChange.x * 0.1f; 
+	m_vecMoveSpeed.y = velocityChange.y * 0.1f;
 
 	float changeX = 0.07f * CTimer::GetTimeStep();
 
@@ -1515,7 +1508,9 @@ CPlayerPed::ProcessControl(void)
 	sprintf(buf, "timestep: %1.3f change: %1.3f xadj: %1.3f, yadj: %1.3f", CTimer::GetTimeStep(), timestepAdjusted, velocityChange.x * timestepAdjusted,
 	        velocityChange.y * timestepAdjusted);
 	CDebug::PrintAt(buf, 6, 32);
-	
+
+	sprintf(buf, "GetWeaponFirstPersonOn(): %d, PlayerWeaponMode.Mode: %d", TheCamera.Cams[TheCamera.ActiveCam].GetWeaponFirstPersonOn(), TheCamera.PlayerWeaponMode.Mode);
+	CDebug::PrintAt(buf, 6, 33);
 	#endif
 
 	if (m_vecMoveSpeed.Magnitude2D() < 0.1f) {
