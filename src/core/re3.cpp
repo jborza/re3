@@ -1061,7 +1061,7 @@ extern bool gbRenderWorld2;
 		//DebugMenuAddCmd("Cam", "Chris", []() { DebugCamMode = CCam::MODE_CHRIS; });
 #ifdef FIRST_PERSON
 		DebugMenuAddCmd("Cam", "M16", []() { DebugCamMode = CCam::MODE_M16_1STPERSON; });
-		DebugMenuAddCmd("Cam", "1ST NEW", []() { DebugCamMode = CCam::MODE_NEW_1STPERSON; });
+		DebugMenuAddCmd("Cam", "1ST NEW", []() { DebugCamMode = CCam::MODE_1STPERSON_NEW; });
 #endif
 		DebugMenuAddCmd("Cam", "Reset Statics", ResetCamStatics);
 

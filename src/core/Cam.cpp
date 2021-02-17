@@ -265,6 +265,9 @@ CCam::Process(void)
 	case MODE_FIGHT_CAM_RUNABOUT:
 		Process_1rstPersonPedOnPC(CameraTarget, TargetOrientation, SpeedVar, TargetSpeedVar);
 		break;
+	case MODE_1STPERSON_NEW: 
+		Process_1stPerson_New(CameraTarget, TargetOrientation, SpeedVar, TargetSpeedVar); 
+		break;
 #ifdef GTA_SCENE_EDIT
 	case MODE_EDITOR:
 		Process_Editor(CameraTarget, TargetOrientation, SpeedVar, TargetSpeedVar);
@@ -2562,6 +2565,8 @@ CCam::Process_1stPerson_New(const CVector &CameraTarget, float, float, float)
 	FOV = DefaultFOV;
 	TargetCoors = CameraTarget;
 
+	float currentPlayerOrientation = ((CPed *)CamTargetEntity)->m_fRotationCur + HALFPI;
+
 	if(ResetStatics) {
 		Beta = ((CPed *)CamTargetEntity)->m_fRotationCur + HALFPI;
 		Alpha = 0.0f;
@@ -2592,12 +2597,9 @@ CCam::Process_1stPerson_New(const CVector &CameraTarget, float, float, float)
 		LookUpDown = 4.0f * MouseY;
 	} else {
 #ifdef FIRST_PERSON
-		// FIX don't do left/right movement by keys / pad
+		// don't do left/right movement by keys / pad
 		LookLeftRight = 0;
 		LookUpDown = 0;
-#else
-		LookLeftRight = -CPad::GetPad(0)->SniperModeLookLeftRight();
-		LookUpDown = CPad::GetPad(0)->SniperModeLookUpDown();
 #endif
 	}
 	if(UseMouse) {
@@ -2622,9 +2624,10 @@ CCam::Process_1stPerson_New(const CVector &CameraTarget, float, float, float)
 	HeadPos.z = 0.0f;
 	((CPed *)CamTargetEntity)->m_pedIK.GetComponentPosition(HeadPos, PED_HEAD);
 	Source = HeadPos;
-	Source.z += 0.1f;
-	Source.x -= 0.19f * Cos(m_fInitialPlayerOrientation);
-	Source.y -= 0.19f * Sin(m_fInitialPlayerOrientation);
+	Source.z += 0.1f; //move the camera slightly upwards at the head
+	//move the camera FORWARD so we don't look through the head, but as if from the eyes
+	Source.x += 0.19f * Cos(currentPlayerOrientation);
+	Source.y += 0.19f * Sin(currentPlayerOrientation);
 #endif
 
 	TargetCoors.x = 3.0f * Cos(Alpha) * Cos(Beta) + Source.x;
@@ -2680,7 +2683,6 @@ CCam::Process_M16_1stPerson(const CVector &CameraTarget, float, float, float)
 	static bool FailedTestTwelveFramesAgo = false;
 	RwV3d HeadPos;
 	CVector TargetCoors;
-
 	FOV = DefaultFOV;
 	TargetCoors = CameraTarget;
 

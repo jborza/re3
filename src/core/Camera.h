@@ -92,7 +92,7 @@ public:
 		MODE_FIGHT_CAM_RUNABOUT,
 		MODE_EDITOR,
 		MODE_HELICANNON_1STPERSON, // vice city leftover
-		MODE_NEW_1STPERSON
+		MODE_1STPERSON_NEW
 	};
 
 	bool    bBelowMinDist; //used for follow ped mode
