@@ -704,7 +704,11 @@ void CControllerConfigManager::AffectControllerStateOn_ButtonDown(int32 button, 
 			{
 				AffectControllerStateOn_ButtonDown_FirstAndThirdPersonOnly(button, type, *state);
 				if (firstPerson)
-					AffectControllerStateOn_ButtonDown_FirstPersonOnly(button, type, *state);
+#ifdef FIRST_PERSON
+					AffectControllerStateOn_ButtonDown_ThirdPersonOnly(button, type, *state);
+#else
+				AffectControllerStateOn_ButtonDown_FirstPersonOnly(button, type, *state);
+#endif
 				else
 				{
 					AffectControllerStateOn_ButtonDown_ThirdPersonOnly(button, type, *state);
