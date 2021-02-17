@@ -331,6 +331,9 @@ void CHud::Draw()
 #ifdef GTA_PC
 		bool DrawCrossHairPC = false;
 #endif
+#ifdef FIRST_PERSON
+		DrawCrossHairPC = true;
+#endif
 
 		int32 WeaponType = FindPlayerPed()->m_weapons[FindPlayerPed()->m_currentWeapon].m_eWeaponType;
 		int32 Mode = TheCamera.Cams[TheCamera.ActiveCam].Mode;
@@ -375,6 +378,8 @@ void CHud::Draw()
 			float fStep = Sin((CTimer::GetTimeInMilliseconds() & 1023)/1024.0f * 6.28f);
 			float fMultBright = SpriteBrightness / 30.0f * (0.25f * fStep + 0.75f);
 			CRect rect;
+
+
 #ifdef GTA_PC
 			if (DrawCrossHairPC && TheCamera.Cams[TheCamera.ActiveCam].Using3rdPersonMouseCam()) {
 				float f3rdX = SCREEN_WIDTH * TheCamera.m_f3rdPersonCHairMultX;
@@ -443,6 +448,16 @@ void CHud::Draw()
 					RwRenderStateSet(rwRENDERSTATETEXTURERASTER, RwTextureGetRaster(gpRocketSightTex));
 					CSprite::RenderOneXLUSprite(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 1.0f, SCREEN_SCALE_X_PC(40.0f), SCREEN_SCALE_Y_PC(40.0f), (100.0f * fMultBright), (200.0f * fMultBright), (100.0f * fMultBright), 255, 1.0f, 255);
 				}
+#ifdef FIRST_PERSON
+				else if(Mode == CCam::MODE_1STPERSON_NEW) {
+					rect.left = (SCREEN_WIDTH / 2) - SCREEN_SCALE_X(32.0f * 0.7f);
+					rect.top = (SCREEN_HEIGHT / 2) - SCREEN_SCALE_Y(32.0f * 0.7f);
+					rect.right = (SCREEN_WIDTH / 2) + SCREEN_SCALE_X(32.0f * 0.7f);
+					rect.bottom = (SCREEN_HEIGHT / 2) + SCREEN_SCALE_Y(32.0f * 0.7f);
+
+					Sprites[HUD_SITEM16].Draw(CRect(rect), CRGBA(255, 255, 255, 255), 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+				}
+#endif
 				else {
 					// Sniper
 					rect.left = SCREEN_WIDTH/2 - SCREEN_SCALE_X(210.0f);
